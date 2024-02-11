@@ -4,6 +4,8 @@ import { OrbitControls } from "jsm/controls/OrbitControls.js";
 import getStarfield from "./src/getStarfield.js";
 import { getFresnelMat } from "./src/getFresnelMat.js";
 
+
+
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
@@ -16,6 +18,15 @@ document.body.appendChild(renderer.domElement);
 const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 scene.add(earthGroup);
+
+// Create a blinking red marker
+const markerGeometry = new THREE.SphereGeometry(0.05, 32, 32); // Small sphere as a marker
+const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red color
+const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+markerMesh.position.set(0, 1.1, 0); // Position it on the surface or adjust as needed
+earthGroup.add(markerMesh);
+
+
 new OrbitControls(camera, renderer.domElement);
 const detail = 12;
 const loader = new THREE.TextureLoader();
@@ -60,9 +71,17 @@ const sunLight = new THREE.DirectionalLight(0xffffff);
 sunLight.position.set(-2, 0.5, 1.5);
 scene.add(sunLight);
 
+let lastBlinkTime = 0;
+const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
+
 function animate() {
   requestAnimationFrame(animate);
 
+  const currentTime = Date.now();
+  if (currentTime - lastBlinkTime > blinkInterval) {
+    markerMesh.visible = !markerMesh.visible; // Toggle visibility
+    lastBlinkTime = currentTime;
+  }
   // earthMesh.rotation.y += 0.002;
   // lightsMesh.rotation.y += 0.002;
   cloudsMesh.rotation.y += 0.0023;

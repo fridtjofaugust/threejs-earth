@@ -4,8 +4,6 @@ import { OrbitControls } from "jsm/controls/OrbitControls.js";
 import getStarfield from "./src/getStarfield.js";
 import { getFresnelMat } from "./src/getFresnelMat.js";
 
-
-
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
@@ -25,7 +23,6 @@ const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red 
 const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
 markerMesh.position.set(0, 1.1, 0); // Position it on the surface or adjust as needed
 earthGroup.add(markerMesh);
-
 
 new OrbitControls(camera, renderer.domElement);
 const detail = 12;
@@ -74,18 +71,32 @@ scene.add(sunLight);
 let lastBlinkTime = 0;
 const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
 
+// Constants for orbit
+const orbitRadius = 1.05; // This should be slightly more than the radius of your Earth mesh
+const orbitPeriod = 10; // Orbital period in seconds (2 hours)
+
 function animate() {
   requestAnimationFrame(animate);
 
+  // Update the blinking marker
   const currentTime = Date.now();
   if (currentTime - lastBlinkTime > blinkInterval) {
     markerMesh.visible = !markerMesh.visible; // Toggle visibility
     lastBlinkTime = currentTime;
   }
+
+  // Update the marker position to orbit around the Earth
+  const elapsedTime = (currentTime / 1000) % orbitPeriod; // Time in seconds
+  const angle = (elapsedTime / orbitPeriod) * Math.PI * 2; // Full rotation in radians
+
+  // Assuming a circular orbit in the XZ plane
+  markerMesh.position.x = orbitRadius * Math.cos(angle);
+  markerMesh.position.z = orbitRadius * Math.sin(angle);
+
   // earthMesh.rotation.y += 0.002;
   // lightsMesh.rotation.y += 0.002;
-  cloudsMesh.rotation.y += 0.0023;
   // glowMesh.rotation.y += 0.002;
+  cloudsMesh.rotation.y += 0.0023;
   stars.rotation.y -= 0.0002;
   renderer.render(scene, camera);
 }

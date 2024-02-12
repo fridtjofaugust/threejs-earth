@@ -72,8 +72,8 @@ let lastBlinkTime = 0;
 const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
 
 // Constants for orbit
-const orbitRadius = 1.05; // This should be slightly more than the radius of your Earth mesh
-const orbitPeriod = 10; // Orbital period in seconds (2 hours)
+const orbitRadius = 1.0; // This should be slightly more than the radius of your Earth mesh
+const orbitPeriod = 10; // Orbital period in seconds (2 hours) org: 7200 (1200 kph). 
 
 function animate() {
   requestAnimationFrame(animate);

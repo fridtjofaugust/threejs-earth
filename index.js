@@ -17,11 +17,14 @@ const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 scene.add(earthGroup);
 
+// Define raceCar here but don't assign it yet
+let raceCar;
+
 // Create a blinking red marker
 const markerGeometry = new THREE.SphereGeometry(0.05, 32, 32); // Small sphere as a marker
 const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red color
 const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-markerMesh.position.set(0, 1.1, 0); // Position it on the surface or adjust as needed
+markerMesh.position.set(0, 0.2, 0); // Position it closer to the Earth's surface
 earthGroup.add(markerMesh);
 
 new OrbitControls(camera, renderer.domElement);
@@ -73,7 +76,11 @@ const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
 
 // Constants for orbit
 const orbitRadius = 1.0; // This should be slightly more than the radius of your Earth mesh
-const orbitPeriod = 10; // Orbital period in seconds (2 hours) org: 7200 (1200 kph). 
+const orbitPeriod = 10; // Orbital period in seconds (2 hours) org: 7200 (1200 kph).
+
+// Create and add the race car after Earth setup and before animate()
+raceCar = createRaceCar(); // Now we assign the race car
+earthGroup.add(raceCar);
 
 function animate() {
   requestAnimationFrame(animate);
@@ -98,6 +105,16 @@ function animate() {
   // glowMesh.rotation.y += 0.002;
   cloudsMesh.rotation.y += 0.0023;
   stars.rotation.y -= 0.0002;
+
+  // Update the race car position to orbit around the Earth
+  const carCurrentTime = Date.now();
+  const carElapsedTime = (carCurrentTime / 1000) % orbitPeriod; // Reuse the orbitPeriod for the car
+  const carAngle = (carElapsedTime / orbitPeriod) * Math.PI * 2; // Full rotation in radians
+
+  // Assuming a circular orbit in the XZ plane for the car
+  raceCar.position.x = orbitRadius * Math.cos(carAngle);
+  raceCar.position.z = orbitRadius * Math.sin(carAngle);
+
   renderer.render(scene, camera);
 }
 
@@ -109,3 +126,33 @@ function handleWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener("resize", handleWindowResize, false);
+
+function createRaceCar() {
+  // Car body
+  const carBodyGeometry = new THREE.BoxGeometry(0.1, 0.025, 0.05);
+  const carMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green color
+  const carBody = new THREE.Mesh(carBodyGeometry, carMaterial);
+
+  // Car wheels
+  const wheelGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.01, 32);
+  const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Black color
+  const wheelPositions = [
+    { x: -0.05, y: -0.0125, z: 0.025 },
+    { x: -0.05, y: -0.0125, z: -0.025 },
+    { x: 0.05, y: -0.0125, z: 0.025 },
+    { x: 0.05, y: -0.0125, z: -0.025 },
+  ];
+
+  // Create and position wheels
+  wheelPositions.forEach((pos) => {
+    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+    wheel.rotation.x = Math.PI / 2; // Orient the wheels correctly
+    wheel.position.set(pos.x, pos.y, pos.z);
+    carBody.add(wheel);
+  });
+
+  // Initial position of the car
+  carBody.position.set(0, 1.05, 0); // Adjust to place on the Earth's surface
+
+  return carBody;
+}

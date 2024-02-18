@@ -4,6 +4,9 @@ import { OrbitControls } from "jsm/controls/OrbitControls.js";
 import getStarfield from "./src/getStarfield.js";
 import { getFresnelMat } from "./src/getFresnelMat.js";
 
+// Import the GLTFLoader
+import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
+
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
@@ -17,8 +20,8 @@ const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 scene.add(earthGroup);
 
-// Define raceCar here but don't assign it yet
-let raceCar;
+let airplane; // This will hold your .glb model
+let haloMesh; // This will hold the halo mesh
 
 // Create a blinking red marker
 const markerGeometry = new THREE.SphereGeometry(0.05, 32, 32); // Small sphere as a marker
@@ -75,12 +78,8 @@ let lastBlinkTime = 0;
 const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
 
 // Constants for orbit
-const orbitRadius = 1.0; // This should be slightly more than the radius of your Earth mesh
+const orbitRadius = 1.005; // This should be slightly more than the radius of your Earth mesh
 const orbitPeriod = 10; // Orbital period in seconds (2 hours) org: 7200 (1200 kph).
-
-// Create and add the race car after Earth setup and before animate()
-raceCar = createRaceCar(); // Now we assign the race car
-earthGroup.add(raceCar);
 
 function animate() {
   requestAnimationFrame(animate);
@@ -106,14 +105,23 @@ function animate() {
   cloudsMesh.rotation.y += 0.0023;
   stars.rotation.y -= 0.0002;
 
-  // Update the race car position to orbit around the Earth
-  const carCurrentTime = Date.now();
-  const carElapsedTime = (carCurrentTime / 1000) % orbitPeriod; // Reuse the orbitPeriod for the car
-  const carAngle = (carElapsedTime / orbitPeriod) * Math.PI * 2; // Full rotation in radians
+  // Update the airplane position to orbit around the Earth with a different speed
+  if (airplane) {
+    const planeCurrentTime = Date.now();
+    const planeElapsedTime = (planeCurrentTime / 1000) % orbitPeriod;
+    const planeAngle = (planeElapsedTime / orbitPeriod) * Math.PI * 2;
+    airplane.position.x = orbitRadius * Math.cos(planeAngle);
+    airplane.position.z = orbitRadius * Math.sin(planeAngle);
 
-  // Assuming a circular orbit in the XZ plane for the car
-  raceCar.position.x = orbitRadius * Math.cos(carAngle);
-  raceCar.position.z = orbitRadius * Math.sin(carAngle);
+    // Rotate the airplane to face along the direction of motion
+    // This aligns the airplane's forward direction with the tangent of the orbit path
+    airplane.rotation.y = Math.PI / 2 - planeAngle;
+
+    // Optionally, you could rotate the haloMesh the same way if it's not aligned with the airplane
+    if (haloMesh) {
+      haloMesh.rotation.y = airplane.rotation.y;
+    }
+  }
 
   renderer.render(scene, camera);
 }
@@ -127,32 +135,40 @@ function handleWindowResize() {
 }
 window.addEventListener("resize", handleWindowResize, false);
 
-function createRaceCar() {
-  // Car body
-  const carBodyGeometry = new THREE.BoxGeometry(0.1, 0.025, 0.05);
-  const carMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green color
-  const carBody = new THREE.Mesh(carBodyGeometry, carMaterial);
+// Load the .glb model and add it to the scene
+function loadAirplaneModel() {
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.load(
+    "glb/north_american_x-15_plane.glb",
+    (gltf) => {
+      airplane = gltf.scene;
 
-  // Car wheels
-  const wheelGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.01, 32);
-  const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Black color
-  const wheelPositions = [
-    { x: -0.05, y: -0.0125, z: 0.025 },
-    { x: -0.05, y: -0.0125, z: -0.025 },
-    { x: 0.05, y: -0.0125, z: 0.025 },
-    { x: 0.05, y: -0.0125, z: -0.025 },
-  ];
+      airplane.scale.set(0.03, 0.03, 0.03); // Adjust scale values as needed
+      airplane.position.set(0, 1.1, 0); // Adjust to place on the Earth's surface
 
-  // Create and position wheels
-  wheelPositions.forEach((pos) => {
-    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-    wheel.rotation.x = Math.PI / 2; // Orient the wheels correctly
-    wheel.position.set(pos.x, pos.y, pos.z);
-    carBody.add(wheel);
-  });
+      // Rotate the airplane to face the correct direction
+      // Assuming the plane needs to be rotated on the Y axis to face forward
+      airplane.rotation.y = Math.PI; // Adjust as necessary to align with the orbit direction
+      // Add the airplane to the earthGroup so it moves with the Earth
+      earthGroup.add(airplane);
 
-  // Initial position of the car
-  carBody.position.set(0, 1.05, 0); // Adjust to place on the Earth's surface
-
-  return carBody;
+      // Create a glow effect (halo) around the airplane for visibility
+      const haloGeometry = new THREE.TorusGeometry(0.08, 0.02, 16, 100);
+      // Improved halo effect
+      const haloMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff, // Use white for better visibility
+        side: THREE.DoubleSide, // Render both sides of the halo
+        blending: THREE.AdditiveBlending, // Use additive blending for a glow effect
+      });
+      haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
+      haloMesh.rotation.x = Math.PI / 2;
+      airplane.add(haloMesh);
+    },
+    undefined,
+    (error) => {
+      console.error(error);
+    }
+  );
 }
+
+loadAirplaneModel(); // Call the function to load the model

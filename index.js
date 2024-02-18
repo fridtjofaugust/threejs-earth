@@ -101,7 +101,7 @@ function animate() {
 
   // earthMesh.rotation.y += 0.002;
   // lightsMesh.rotation.y += 0.002;
-  // glowMesh.rotation.y += 0.002;
+  glowMesh.rotation.y += 0.002;
   cloudsMesh.rotation.y += 0.0023;
   stars.rotation.y -= 0.0002;
 

@@ -81,6 +81,59 @@ const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
 const orbitRadius = 1.005; // This should be slightly more than the radius of your Earth mesh
 const orbitPeriod = 10; // Orbital period in seconds (2 hours) org: 7200 (1200 kph).
 
+
+
+// ISS
+let iss; // This will hold your ISS model
+const issOrbitRadius = 2.0; // Larger orbit radius than the X-15 plane
+const issOrbitPeriod = 10; // Orbital period in seconds, make it slower or faster as you wish
+
+// Load the ISS model and add it to the scene
+function loadISSModel() {
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.load(
+    "glb/iss.glb", // Path to your ISS .glb file
+    (gltf) => {
+      iss = gltf.scene;
+
+      iss.scale.set(0.05, 0.05, 0.05); // Adjust scale values as needed
+      iss.position.set(issOrbitRadius, 0, 0); // Start position at orbit radius
+
+      // Add the ISS to the earthGroup so it moves with the Earth
+      earthGroup.add(iss);
+
+      // You can add a halo effect to the ISS here if you want, similar to the airplane
+    },
+    undefined,
+    (error) => {
+      console.error(error);
+    }
+  );
+}
+
+// Call the function to load the ISS model
+loadISSModel();
+
+// In your animate function, update the ISS position to orbit around the Earth
+function updateISSOrbit() {
+  if (iss) {
+    const currentTime = Date.now();
+    const issElapsedTime = (currentTime / 1000) % issOrbitPeriod;
+    const issAngle = (issElapsedTime / issOrbitPeriod) * Math.PI * 2;
+
+    iss.position.x = issOrbitRadius * Math.cos(issAngle);
+    iss.position.z = issOrbitRadius * Math.sin(issAngle);
+
+    // Rotate the ISS to face along the direction of motion
+    iss.rotation.y = Math.PI / 2 - issAngle;
+  }
+}
+
+// Inside your animate function, add this call
+updateISSOrbit();
+
+
+
 function animate() {
   requestAnimationFrame(animate);
 
@@ -122,7 +175,7 @@ function animate() {
       haloMesh.rotation.y = airplane.rotation.y;
     }
   }
-
+  updateISSOrbit(); // Update the ISS orbit
   renderer.render(scene, camera);
 }
 
@@ -172,3 +225,4 @@ function loadAirplaneModel() {
 }
 
 loadAirplaneModel(); // Call the function to load the model
+

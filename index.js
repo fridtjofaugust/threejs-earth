@@ -7,6 +7,8 @@ import { getFresnelMat } from "./src/getFresnelMat.js";
 // Import the GLTFLoader
 import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
 
+import { CSS2DRenderer, CSS2DObject } from "jsm/renderers/CSS2DRenderer.js";
+
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
@@ -16,11 +18,19 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(w, h);
 document.body.appendChild(renderer.domElement);
 
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = "absolute";
+labelRenderer.domElement.style.top = "0px";
+labelRenderer.domElement.style.pointerEvents = "none";
+document.body.appendChild(labelRenderer.domElement);
+
 const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 scene.add(earthGroup);
 
 let airplane; // This will hold your .glb model
+
 let haloMesh; // This will hold the halo mesh
 
 // Create a blinking red marker
@@ -30,7 +40,7 @@ const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
 markerMesh.position.set(0, 0.2, 0); // Position it closer to the Earth's surface
 earthGroup.add(markerMesh);
 
-new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 const detail = 12;
 const loader = new THREE.TextureLoader();
 const geometry = new THREE.IcosahedronGeometry(1, detail);
@@ -70,7 +80,7 @@ earthGroup.add(glowMesh);
 const stars = getStarfield({ numStars: 2000 });
 scene.add(stars);
 
-const sunLight = new THREE.DirectionalLight(0xffffff);
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.0); // Increase intensity to 1.5
 sunLight.position.set(-2, 0.5, 1.5);
 scene.add(sunLight);
 
@@ -81,12 +91,10 @@ const blinkInterval = 1000; // Blink every 1000 milliseconds (1 second)
 const orbitRadius = 1.005; // This should be slightly more than the radius of your Earth mesh
 const orbitPeriod = 10; // Orbital period in seconds (2 hours) org: 7200 (1200 kph).
 
-
-
 // ISS
 let iss; // This will hold your ISS model
-const issOrbitRadius = 2.0; // Larger orbit radius than the X-15 plane
-const issOrbitPeriod = 10; // Orbital period in seconds, make it slower or faster as you wish
+const issOrbitRadius = 4.0; // Larger orbit radius than the X-15 plane
+const issOrbitPeriod = 90; // Represents the ISS's orbit period in minutes, scaled down for visual effectiveness
 
 // Load the ISS model and add it to the scene
 function loadISSModel() {
@@ -123,19 +131,18 @@ function updateISSOrbit() {
 
     iss.position.x = issOrbitRadius * Math.cos(issAngle);
     iss.position.z = issOrbitRadius * Math.sin(issAngle);
-
-    // Rotate the ISS to face along the direction of motion
-    iss.rotation.y = Math.PI / 2 - issAngle;
+    iss.position.y = 0.5 * Math.sin(issAngle); // Adjust Y position
   }
 }
 
 // Inside your animate function, add this call
 updateISSOrbit();
 
-
-
 function animate() {
   requestAnimationFrame(animate);
+
+  // Update controls
+  controls.update(); // onl
 
   // Update the blinking marker
   const currentTime = Date.now();
@@ -163,20 +170,35 @@ function animate() {
     const planeCurrentTime = Date.now();
     const planeElapsedTime = (planeCurrentTime / 1000) % orbitPeriod;
     const planeAngle = (planeElapsedTime / orbitPeriod) * Math.PI * 2;
-    airplane.position.x = orbitRadius * Math.cos(planeAngle);
-    airplane.position.z = orbitRadius * Math.sin(planeAngle);
+    airplane.position.y = orbitRadius * Math.sin(planeAngle); // Vertical movement
+    airplane.position.z = orbitRadius * Math.cos(planeAngle); // Circular path
 
     // Rotate the airplane to face along the direction of motion
     // This aligns the airplane's forward direction with the tangent of the orbit path
-    airplane.rotation.y = Math.PI / 2 - planeAngle;
+    airplane.rotation.x = Math.PI / 2 - planeAngle;
 
     // Optionally, you could rotate the haloMesh the same way if it's not aligned with the airplane
     if (haloMesh) {
       haloMesh.rotation.y = airplane.rotation.y;
     }
   }
+
+  function updateHUD() {
+    const airplaneSpeedKPH = 7273; // Example speed for the X-15
+    const issSpeedKPH = 28000; // Example speed for the ISS
+
+    document.getElementById(
+      "airplaneInfo"
+    ).textContent = `Airplane: ${airplaneSpeedKPH} kph`;
+    document.getElementById("issInfo").textContent = `ISS: ${issSpeedKPH} kph`;
+  }
+
+  // Call this function within your animate() function
+  updateHUD();
+
   updateISSOrbit(); // Update the ISS orbit
   renderer.render(scene, camera);
+  // labelRenderer.render(scene, camera);
 }
 
 animate();
@@ -205,6 +227,14 @@ function loadAirplaneModel() {
       // Add the airplane to the earthGroup so it moves with the Earth
       earthGroup.add(airplane);
 
+      const airplaneLabelDiv = document.createElement("div");
+      airplaneLabelDiv.className = "label";
+      airplaneLabelDiv.textContent = "X-15";
+      airplaneLabelDiv.style.marginTop = "-1em";
+      const airplaneLabel = new CSS2DObject(airplaneLabelDiv);
+      airplaneLabel.position.set(0, 0.5, 0);
+      airplane.add(airplaneLabel); // Assuming 'airplane' is your airplane mesh
+
       // Create a glow effect (halo) around the airplane for visibility
       const haloGeometry = new THREE.TorusGeometry(0.08, 0.02, 16, 100);
       // Improved halo effect
@@ -225,4 +255,3 @@ function loadAirplaneModel() {
 }
 
 loadAirplaneModel(); // Call the function to load the model
-

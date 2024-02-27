@@ -9,6 +9,11 @@ import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
 
 import { CSS2DRenderer, CSS2DObject } from "jsm/renderers/CSS2DRenderer.js";
 
+let issClicked = false; // Add this line near the top of your script
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
@@ -28,10 +33,6 @@ document.body.appendChild(labelRenderer.domElement);
 const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 scene.add(earthGroup);
-
-let airplane; // This will hold your .glb model
-
-let haloMesh; // This will hold the halo mesh
 
 // Create a blinking red marker
 const markerGeometry = new THREE.SphereGeometry(0.05, 32, 32); // Small sphere as a marker
@@ -96,6 +97,118 @@ let iss; // This will hold your ISS model
 const issOrbitRadius = 4.0; // Larger orbit radius than the X-15 plane
 const issOrbitPeriod = 90; // Represents the ISS's orbit period in minutes, scaled down for visual effectiveness
 
+function onMouseClick(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects([iss], true);
+
+  if (intersects.length > 0) {
+    const newTarget = intersects[0].object.position;
+
+    // Set the camera to look at the ISS
+    camera.lookAt(newTarget.x, newTarget.y, newTarget.z);
+
+    // Reduce the offset to zoom in closer
+    const zoomOffset = 0.5; // Closer than 1.5 units
+    camera.position.set(
+      newTarget.x + zoomOffset,
+      newTarget.y + zoomOffset,
+      newTarget.z + zoomOffset
+    );
+
+    document.getElementById("resetCameraBtn").style.display = "block";
+    issClicked = true;
+  }
+
+  const newTarget = intersects[0].object.position;
+  camera.lookAt(newTarget.x, newTarget.y, newTarget.z);
+  camera.position.set(newTarget.x + 1.5, newTarget.y + 1.5, newTarget.z + 1.5);
+
+  document.getElementById("resetCameraBtn").style.display = "block";
+
+  // Action if the ISS is clicked
+  for (let i = 0; i < intersects.length; i++) {
+    if (intersects[i].object === iss) {
+      // Perform the desired action, like displaying information or changing the view
+      console.log("ISS clicked");
+      break;
+    }
+  }
+}
+
+window.addEventListener("click", onMouseClick, false);
+
+function onClick(event) {
+  // Update the mouse variable
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // Find intersections
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  for (let i = 0; i < intersects.length; i++) {
+    if (intersects[i].object === iss) {
+      focusOnISS(); // Call the function to focus on the ISS
+      break; // If we found the ISS, no need to check other intersections
+    }
+  }
+}
+
+window.addEventListener("click", onClick);
+
+function onDocumentMouseDown(event) {
+  event.preventDefault();
+
+  mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  if (intersects.length > 0) {
+    const res = intersects.filter(function (res) {
+      return res && res.object;
+    })[0];
+
+    if (res && res.object.name === "ISS") {
+      // Set the camera position and look at the ISS model
+      const offset = new THREE.Vector3(0, 0.05, 0.2); // You may need to adjust this offset
+      camera.position.copy(res.object.position.clone().add(offset));
+      camera.lookAt(res.object.position);
+    }
+  }
+}
+
+window.addEventListener("mousedown", onDocumentMouseDown, false);
+
+// Add this code at the end of your script to create the reset button
+var resetBtn = document.createElement("button");
+resetBtn.innerHTML = "Reset Camera";
+resetBtn.id = "resetCameraBtn";
+resetBtn.style.position = "absolute";
+resetBtn.style.left = "20px";
+resetBtn.style.bottom = "20px";
+resetBtn.style.display = "none";
+document.body.appendChild(resetBtn);
+
+document
+  .getElementById("resetCameraBtn")
+  .addEventListener("click", function () {
+    if (window.originalCameraState) {
+      camera.position.copy(window.originalCameraState.position);
+      controls.target.copy(window.originalCameraState.target);
+      controls.enabled = true; // Re-enable orbit controls
+      controls.update();
+    }
+    this.style.display = "none"; // Hide the reset button
+    issClicked = false; // Add this line
+  });
+
 // Load the ISS model and add it to the scene
 function loadISSModel() {
   const gltfLoader = new GLTFLoader();
@@ -103,6 +216,7 @@ function loadISSModel() {
     "glb/iss.glb", // Path to your ISS .glb file
     (gltf) => {
       iss = gltf.scene;
+      iss.name = "ISS";
 
       iss.scale.set(0.05, 0.05, 0.05); // Adjust scale values as needed
       iss.position.set(issOrbitRadius, 0, 0); // Start position at orbit radius
@@ -119,7 +233,6 @@ function loadISSModel() {
   );
 }
 
-// Call the function to load the ISS model
 loadISSModel();
 
 // In your animate function, update the ISS position to orbit around the Earth
@@ -138,11 +251,24 @@ function updateISSOrbit() {
 // Inside your animate function, add this call
 updateISSOrbit();
 
+let cameraTargetPosition = new THREE.Vector3();
+let cameraTargetQuaternion = new THREE.Quaternion();
+const lerpFactor = 0.1; // Adjust this value for smoother or quicker transitions.
+
+function updateCameraPosition() {
+  if (issClicked && iss) {
+    const offset = new THREE.Vector3(10, 10, 10); // Change this offset based on desired camera position relative to the ISS
+    cameraTargetPosition.copy(iss.position).add(offset);
+    camera.position.lerp(cameraTargetPosition, lerpFactor);
+
+    // Look at ISS position from the current camera position
+    camera.lookAt(iss.position);
+  }
+}
+
 function animate() {
   requestAnimationFrame(animate);
-
-  // Update controls
-  controls.update(); // onl
+  controls.update();
 
   // Update the blinking marker
   const currentTime = Date.now();
@@ -151,11 +277,8 @@ function animate() {
     lastBlinkTime = currentTime;
   }
 
-  // Update the marker position to orbit around the Earth
-  const elapsedTime = (currentTime / 1000) % orbitPeriod; // Time in seconds
-  const angle = (elapsedTime / orbitPeriod) * Math.PI * 2; // Full rotation in radians
-
-  // Assuming a circular orbit in the XZ plane
+  const elapsedTime = (currentTime / 1000) % orbitPeriod;
+  const angle = (elapsedTime / orbitPeriod) * Math.PI * 2;
   markerMesh.position.x = orbitRadius * Math.cos(angle);
   markerMesh.position.z = orbitRadius * Math.sin(angle);
 
@@ -165,31 +288,9 @@ function animate() {
   cloudsMesh.rotation.y += 0.0023;
   stars.rotation.y -= 0.0002;
 
-  // Update the airplane position to orbit around the Earth with a different speed
-  if (airplane) {
-    const planeCurrentTime = Date.now();
-    const planeElapsedTime = (planeCurrentTime / 1000) % orbitPeriod;
-    const planeAngle = (planeElapsedTime / orbitPeriod) * Math.PI * 2;
-    airplane.position.y = orbitRadius * Math.sin(planeAngle); // Vertical movement
-    airplane.position.z = orbitRadius * Math.cos(planeAngle); // Circular path
-
-    // Rotate the airplane to face along the direction of motion
-    // This aligns the airplane's forward direction with the tangent of the orbit path
-    airplane.rotation.x = Math.PI / 2 - planeAngle;
-
-    // Optionally, you could rotate the haloMesh the same way if it's not aligned with the airplane
-    if (haloMesh) {
-      haloMesh.rotation.y = airplane.rotation.y;
-    }
-  }
-
   function updateHUD() {
-    const airplaneSpeedKPH = 7273; // Example speed for the X-15
     const issSpeedKPH = 28000; // Example speed for the ISS
 
-    document.getElementById(
-      "airplaneInfo"
-    ).textContent = `Airplane: ${airplaneSpeedKPH} kph`;
     document.getElementById("issInfo").textContent = `ISS: ${issSpeedKPH} kph`;
   }
 
@@ -197,6 +298,11 @@ function animate() {
   updateHUD();
 
   updateISSOrbit(); // Update the ISS orbit
+
+  if (issClicked) {
+    updateCameraPosition();
+  }
+
   renderer.render(scene, camera);
   // labelRenderer.render(scene, camera);
 }
@@ -209,49 +315,3 @@ function handleWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener("resize", handleWindowResize, false);
-
-// Load the .glb model and add it to the scene
-function loadAirplaneModel() {
-  const gltfLoader = new GLTFLoader();
-  gltfLoader.load(
-    "glb/north_american_x-15_plane.glb",
-    (gltf) => {
-      airplane = gltf.scene;
-
-      airplane.scale.set(0.03, 0.03, 0.03); // Adjust scale values as needed
-      airplane.position.set(0, 1.1, 0); // Adjust to place on the Earth's surface
-
-      // Rotate the airplane to face the correct direction
-      // Assuming the plane needs to be rotated on the Y axis to face forward
-      airplane.rotation.y = Math.PI; // Adjust as necessary to align with the orbit direction
-      // Add the airplane to the earthGroup so it moves with the Earth
-      earthGroup.add(airplane);
-
-      const airplaneLabelDiv = document.createElement("div");
-      airplaneLabelDiv.className = "label";
-      airplaneLabelDiv.textContent = "X-15";
-      airplaneLabelDiv.style.marginTop = "-1em";
-      const airplaneLabel = new CSS2DObject(airplaneLabelDiv);
-      airplaneLabel.position.set(0, 0.5, 0);
-      airplane.add(airplaneLabel); // Assuming 'airplane' is your airplane mesh
-
-      // Create a glow effect (halo) around the airplane for visibility
-      const haloGeometry = new THREE.TorusGeometry(0.08, 0.02, 16, 100);
-      // Improved halo effect
-      const haloMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff, // Use white for better visibility
-        side: THREE.DoubleSide, // Render both sides of the halo
-        blending: THREE.AdditiveBlending, // Use additive blending for a glow effect
-      });
-      haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
-      haloMesh.rotation.x = Math.PI / 2;
-      airplane.add(haloMesh);
-    },
-    undefined,
-    (error) => {
-      console.error(error);
-    }
-  );
-}
-
-loadAirplaneModel(); // Call the function to load the model

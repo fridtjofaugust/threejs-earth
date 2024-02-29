@@ -3,16 +3,42 @@ import { OrbitControls } from "jsm/controls/OrbitControls.js";
 
 import getStarfield from "./src/getStarfield.js";
 import { getFresnelMat } from "./src/getFresnelMat.js";
-
-// Import the GLTFLoader
 import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
-
 import { CSS2DRenderer, CSS2DObject } from "jsm/renderers/CSS2DRenderer.js";
 
 let issClicked = false; // Add this line near the top of your script
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+
+// Function to focus on the ISS when clicked
+function focusOnISS(intersect) {
+  const newTarget = intersect.object.position;
+  camera.position.set(newTarget.x + 0.5, newTarget.y + 0.5, newTarget.z + 0.5);
+  controls.target.copy(newTarget);
+  controls.update();
+
+  document.getElementById("resetCameraBtn").style.display = "block";
+  issClicked = true;
+}
+
+// Event listeners
+window.addEventListener("click", function (event) {
+  event.preventDefault();
+
+  mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  for (let i = 0; i < intersects.length; i++) {
+    if (intersects[i].object.name === "ISS") {
+      focusOnISS(intersects[i]);
+      break;
+    }
+  }
+});
 
 const w = window.innerWidth;
 const h = window.innerHeight;
@@ -106,59 +132,46 @@ function onMouseClick(event) {
   const intersects = raycaster.intersectObjects([iss], true);
 
   if (intersects.length > 0) {
+    const intersection = intersects[0]; // Safely get the first item
+    if (intersection && intersection.object) {
+      const newTarget = intersection.object.position;
+      // Set the camera to look at the ISS
+      camera.lookAt(newTarget.x, newTarget.y, newTarget.z);
+
+      // Reduce the offset to zoom in closer
+      const zoomOffset = 0.5; // Closer than 1.5 units
+      camera.position.set(
+        newTarget.x + zoomOffset,
+        newTarget.y + zoomOffset,
+        newTarget.z + zoomOffset
+      );
+
+      document.getElementById("resetCameraBtn").style.display = "block";
+      issClicked = true;
+    }
+
     const newTarget = intersects[0].object.position;
-
-    // Set the camera to look at the ISS
     camera.lookAt(newTarget.x, newTarget.y, newTarget.z);
-
-    // Reduce the offset to zoom in closer
-    const zoomOffset = 0.5; // Closer than 1.5 units
     camera.position.set(
-      newTarget.x + zoomOffset,
-      newTarget.y + zoomOffset,
-      newTarget.z + zoomOffset
+      newTarget.x + 1.5,
+      newTarget.y + 1.5,
+      newTarget.z + 1.5
     );
 
     document.getElementById("resetCameraBtn").style.display = "block";
-    issClicked = true;
-  }
 
-  const newTarget = intersects[0].object.position;
-  camera.lookAt(newTarget.x, newTarget.y, newTarget.z);
-  camera.position.set(newTarget.x + 1.5, newTarget.y + 1.5, newTarget.z + 1.5);
-
-  document.getElementById("resetCameraBtn").style.display = "block";
-
-  // Action if the ISS is clicked
-  for (let i = 0; i < intersects.length; i++) {
-    if (intersects[i].object === iss) {
-      // Perform the desired action, like displaying information or changing the view
-      console.log("ISS clicked");
-      break;
+    // Action if the ISS is clicked
+    for (let i = 0; i < intersects.length; i++) {
+      if (intersects[i].object === iss) {
+        // Perform the desired action, like displaying information or changing the view
+        console.log("ISS clicked");
+        break;
+      }
     }
   }
 }
 
 window.addEventListener("click", onMouseClick, false);
-
-function onClick(event) {
-  // Update the mouse variable
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  // Find intersections
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children, true);
-
-  for (let i = 0; i < intersects.length; i++) {
-    if (intersects[i].object === iss) {
-      focusOnISS(); // Call the function to focus on the ISS
-      break; // If we found the ISS, no need to check other intersections
-    }
-  }
-}
-
-window.addEventListener("click", onClick);
 
 function onDocumentMouseDown(event) {
   event.preventDefault();

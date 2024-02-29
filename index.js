@@ -237,6 +237,14 @@ function loadISSModel() {
       // Add the ISS to the earthGroup so it moves with the Earth
       earthGroup.add(iss);
 
+      // Inside the loadISSModel function, after the ISS has been loaded and set up
+      const issLabelDiv = document.createElement("div");
+      issLabelDiv.className = "label";
+      issLabelDiv.textContent = "ISS"; // Or any other text you want
+      const issLabel = new CSS2DObject(issLabelDiv);
+      issLabel.position.set(0, 0.5, 0); // Adjust for visibility, relative to ISS
+      iss.add(issLabel); // Attach the label to the ISS model
+
       // You can add a halo effect to the ISS here if you want, similar to the airplane
     },
     undefined,
@@ -317,7 +325,7 @@ function animate() {
   }
 
   renderer.render(scene, camera);
-  // labelRenderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
 }
 
 animate();

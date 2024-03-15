@@ -287,45 +287,59 @@ function updateCameraPosition() {
   }
 }
 
+// Add this line near the top of your script
+let animateObjects = true; // Controls the animation of the ISS and the red marker
+
+// Function to toggle the animation
+function toggleAnimation() {
+  animateObjects = !animateObjects; // Toggle the state
+  document.getElementById("toggleAnimationBtn").textContent = animateObjects
+    ? "Stop"
+    : "Start";
+}
+
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
 
-  // Update the blinking marker
-  const currentTime = Date.now();
-  if (currentTime - lastBlinkTime > blinkInterval) {
-    markerMesh.visible = !markerMesh.visible; // Toggle visibility
-    lastBlinkTime = currentTime;
+  if (animateObjects) {
+    const currentTime = Date.now();
+    if (currentTime - lastBlinkTime > blinkInterval) {
+      markerMesh.visible = !markerMesh.visible; // Toggle visibility
+      lastBlinkTime = currentTime;
+    }
+
+    const elapsedTime = (currentTime / 1000) % orbitPeriod;
+    const angle = (elapsedTime / orbitPeriod) * Math.PI * 2;
+    markerMesh.position.x = orbitRadius * Math.cos(angle);
+    markerMesh.position.z = orbitRadius * Math.sin(angle);
+
+    // earthMesh.rotation.y += 0.002;
+    // lightsMesh.rotation.y += 0.002;
+    glowMesh.rotation.y += 0.002;
+    cloudsMesh.rotation.y += 0.0023;
+    stars.rotation.y -= 0.0002;
+
+    function updateHUD() {
+      const issSpeedKPH = 28000; // Example speed for the ISS
+
+      document.getElementById(
+        "issInfo"
+      ).textContent = `ISS: ${issSpeedKPH} kph`;
+    }
+
+    // Call this function within your animate() function
+    updateHUD();
+
+    updateISSOrbit(); // Update the ISS orbit
+
+    if (issClicked) {
+      updateCameraPosition();
+    }
+
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
   }
-
-  const elapsedTime = (currentTime / 1000) % orbitPeriod;
-  const angle = (elapsedTime / orbitPeriod) * Math.PI * 2;
-  markerMesh.position.x = orbitRadius * Math.cos(angle);
-  markerMesh.position.z = orbitRadius * Math.sin(angle);
-
-  // earthMesh.rotation.y += 0.002;
-  // lightsMesh.rotation.y += 0.002;
-  glowMesh.rotation.y += 0.002;
-  cloudsMesh.rotation.y += 0.0023;
-  stars.rotation.y -= 0.0002;
-
-  function updateHUD() {
-    const issSpeedKPH = 28000; // Example speed for the ISS
-
-    document.getElementById("issInfo").textContent = `ISS: ${issSpeedKPH} kph`;
-  }
-
-  // Call this function within your animate() function
-  updateHUD();
-
-  updateISSOrbit(); // Update the ISS orbit
-
-  if (issClicked) {
-    updateCameraPosition();
-  }
-
-  renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
 }
 
 animate();
@@ -336,3 +350,8 @@ function handleWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener("resize", handleWindowResize, false);
+
+// In the part of your script where you set up event listeners:
+document
+  .getElementById("toggleAnimationBtn")
+  .addEventListener("click", toggleAnimation);

@@ -4,36 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SSC Trust</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
       body {
         margin: 0;
       }
-      .label {
-        color: white; /* Or any color that stands out against your background */
-        background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
-        border: 1px solid #fff; /* White border */
-        padding: 2px;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-        border-radius: 10px; /* Rounded corners, adjust radius as needed */
-      }
     </style>
     <script type="importmap">
-			{
-				"imports": {
-					"three": "https://cdn.jsdelivr.net/npm/three@0.131/build/three.module.js",
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.131/build/three.module.js",
           "jsm/": "https://cdn.jsdelivr.net/npm/three@0.131/examples/jsm/"
         }
-			}
-		</script>
+      }
+    </script>
   </head>
-  <body>
+  <body class="bg-gray-900 text-white">
     <script type="module" src="index.js"></script>
-    <div id="hud" style="position: absolute; top: 0; left: 0; color: white; padding: 10px; z-index: 100;">
-      <p id="issInfo">ISS: </p>
+    <div id="hud" class="absolute top-0 left-0 p-4 z-50">
+      <p id="issInfo" class="text-lg font-semibold">ISS: </p>
     </div>
-    <div id="controlButtons" style="position: absolute; bottom: 0; left: 0; padding: 10px; z-index: 100;">
-      <button id="toggleAnimationBtn">Stop</button>
+    <div id="controlButtons" class="absolute bottom-0 left-0 p-4 z-50">
+      <button id="toggleAnimationBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Stop</button>
     </div>
-    
+  </body>
 </html>

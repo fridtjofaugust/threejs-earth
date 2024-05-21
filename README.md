@@ -10,4 +10,7 @@ Earth texture maps: [PlanetPixelEmporium](https://planetpixelemporium.com/earth.
 
 # Information
 - requestAnimationFrame typically runs at about 60 frames per second.
-- 
+
+## Tailwind
+npm init -y
+npm install tailwindcss

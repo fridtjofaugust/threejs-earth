@@ -7,11 +7,17 @@ import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
 import { CSS2DRenderer, CSS2DObject } from "jsm/renderers/CSS2DRenderer.js";
 
 let issClicked = false; // Add this line near the top of your script
+let originalCameraPosition = new THREE.Vector3();
+let originalControlsTarget = new THREE.Vector3();
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 function focusOnISS(intersect) {
+  // Save original camera state
+  originalCameraPosition.copy(camera.position);
+  originalControlsTarget.copy(controls.target);
+
   const issPosition = intersect.object.position;
   const earthPosition = new THREE.Vector3(0, 0, 0); // Assuming Earth is at the origin
   const direction = new THREE.Vector3()
@@ -29,6 +35,14 @@ function focusOnISS(intersect) {
 
   document.getElementById("resetCameraBtn").style.display = "block";
   issClicked = true;
+}
+
+function resetCamera() {
+  camera.position.copy(originalCameraPosition);
+  controls.target.copy(originalControlsTarget);
+  controls.update();
+  document.getElementById("resetCameraBtn").style.display = "none";
+  issClicked = false;
 }
 
 
@@ -304,8 +318,6 @@ function updateCameraPosition() {
     controls.update();
   }
 }
-
-
 
 // Add this line near the top of your script
 let animateObjects = true; // Controls the animation of the ISS and the red marker

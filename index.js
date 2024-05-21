@@ -11,16 +11,26 @@ let issClicked = false; // Add this line near the top of your script
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-// Function to focus on the ISS when clicked
 function focusOnISS(intersect) {
-  const newTarget = intersect.object.position;
-  camera.position.set(newTarget.x + 0.5, newTarget.y + 0.5, newTarget.z + 0.5);
-  controls.target.copy(newTarget);
+  const issPosition = intersect.object.position;
+  const earthPosition = new THREE.Vector3(0, 0, 0); // Assuming Earth is at the origin
+  const direction = new THREE.Vector3()
+    .subVectors(issPosition, earthPosition)
+    .normalize();
+  const distance = 2; // Distance from ISS; adjust for desired zoom level
+
+  const newCameraPosition = issPosition
+    .clone()
+    .add(direction.multiplyScalar(distance));
+  camera.position.copy(newCameraPosition);
+  camera.lookAt(issPosition);
+  controls.target.copy(issPosition);
   controls.update();
 
   document.getElementById("resetCameraBtn").style.display = "block";
   issClicked = true;
 }
+
 
 // Event listeners
 window.addEventListener("click", function (event) {
@@ -278,14 +288,24 @@ const lerpFactor = 0.1; // Adjust this value for smoother or quicker transitions
 
 function updateCameraPosition() {
   if (issClicked && iss) {
-    const offset = new THREE.Vector3(10, 10, 10); // Change this offset based on desired camera position relative to the ISS
-    cameraTargetPosition.copy(iss.position).add(offset);
-    camera.position.lerp(cameraTargetPosition, lerpFactor);
+    const issPosition = iss.position;
+    const earthPosition = new THREE.Vector3(0, 0, 0); // Assuming Earth is at the origin
+    const direction = new THREE.Vector3()
+      .subVectors(issPosition, earthPosition)
+      .normalize();
+    const distance = 2; // Distance from ISS; adjust for desired zoom level
 
-    // Look at ISS position from the current camera position
-    camera.lookAt(iss.position);
+    const newCameraPosition = issPosition
+      .clone()
+      .add(direction.multiplyScalar(distance));
+    camera.position.lerp(newCameraPosition, 0.1);
+    camera.lookAt(issPosition);
+    controls.target.copy(issPosition); // Ensure controls target is updated
+    controls.update();
   }
 }
+
+
 
 // Add this line near the top of your script
 let animateObjects = true; // Controls the animation of the ISS and the red marker

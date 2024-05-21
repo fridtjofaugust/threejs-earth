@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "tailwindcss build src/style.css -o public/style.css"
+    "build": "npm run build:css && npm run build:other",
+    "build:css": "tailwindcss build src/style.css -o public/style.css",
+    "build:other": "echo \"Add other build steps here if needed\""
   },
   "repository": {
     "type": "git",
